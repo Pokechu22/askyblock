@@ -71,6 +71,7 @@ import com.wasteofplastic.askyblock.listeners.JoinLeaveEvents;
 import com.wasteofplastic.askyblock.listeners.LavaCheck;
 import com.wasteofplastic.askyblock.listeners.NetherPortals;
 import com.wasteofplastic.askyblock.listeners.PlayerEvents;
+import com.wasteofplastic.askyblock.listeners.RedstoneToObsidian;
 import com.wasteofplastic.askyblock.listeners.WorldEnter;
 import com.wasteofplastic.askyblock.listeners.WorldLoader;
 import com.wasteofplastic.askyblock.panels.BiomesPanel;
@@ -106,6 +107,7 @@ public class ASkyBlock extends JavaPlugin {
     // Listeners
     private WarpSigns warpSignsListener;
     private LavaCheck lavaListener;
+    private RedstoneToObsidian obsidianListener;
     // Biome chooser object
     private BiomesPanel biomes;
     // Island grid manager
@@ -1471,6 +1473,9 @@ public class ASkyBlock extends JavaPlugin {
         // Ensures Lava flows correctly in ASkyBlock world
         lavaListener = new LavaCheck(this);
         manager.registerEvents(lavaListener, this);
+        // Allows redstone to obsidian
+        obsidianListener = new RedstoneToObsidian(this);
+        manager.registerEvents(obsidianListener, this);
         // Ensures that water is acid
         manager.registerEvents(new AcidEffect(this), this);
         // Ensures that boats are safe in ASkyBlock
@@ -1557,6 +1562,8 @@ public class ASkyBlock extends JavaPlugin {
         final PluginManager manager = getServer().getPluginManager();
         lavaListener = new LavaCheck(this);
         manager.registerEvents(lavaListener, this);
+        obsidianListener = new RedstoneToObsidian(this);
+        manager.registerEvents(obsidianListener, this);
         // Enables warp signs in ASkyBlock
         warpSignsListener = new WarpSigns(this);
         manager.registerEvents(warpSignsListener, this);
