@@ -44,6 +44,14 @@ public class RedstoneToObsidian implements Listener {
 		this.plugin = plugin;
 	}
 	
+	private static final BlockFace[] MIX_CHECK_FACES = {
+		BlockFace.NORTH,
+		BlockFace.EAST,
+		BlockFace.SOUTH,
+		BlockFace.WEST,
+		BlockFace.UP,
+	};
+	
 	@EventHandler
 	public void onBlockChange(BlockFromToEvent e) {
 		Block fromBlock = e.getBlock();
@@ -53,8 +61,7 @@ public class RedstoneToObsidian implements Listener {
 			if (toBlock.getType() == Material.REDSTONE_WIRE) {
 				// Check to see if the block would become cobble
 				boolean wouldMakeCobble = false;
-				for (BlockFace face : BlockFace.values()) {
-					if (face == BlockFace.DOWN) { continue; }
+				for (BlockFace face : MIX_CHECK_FACES) {
 					
 					Block block = toBlock.getRelative(face);
 					if (block.getType() == Material.WATER
