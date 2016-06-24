@@ -1,12 +1,14 @@
 name: ASkyBlock
 main: com.wasteofplastic.askyblock.ASkyBlock
-version: ${version}
+version: ${version}-Dwarfscraft
 description: A SkyBlock Plugin
 author: Tastybento
+authors: [Pokechu22]
 depend: [Vault]
 softdepend: [Herochat]
 load: startup
 loadbefore: [Multiverse-Core]
+website: http://github.com/pokechu22/ASkyBlock/tree/dwarfscraft
 commands:
     island:
         description: Main player command
