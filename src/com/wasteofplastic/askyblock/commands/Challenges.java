@@ -1575,13 +1575,11 @@ public class Challenges implements CommandExecutor, TabCompleter {
      * @return inventory
      */
     public Inventory challengePanel(Player player, String level) {
-        //plugin.getLogger().info("DEBUG: level requested = " + level);
         // Create the challenges control panel
         // New panel map
-        List<CPItem> cp = new ArrayList<CPItem>();
+        List<CPItem> challengeItems = new ArrayList<CPItem>();
 
         // Do some checking
-        // plugin.getLogger().severe("DEBUG: Opening level " + level);
 
         if (level.isEmpty() && !challengeList.containsKey("")) {
             if (!Settings.challengeLevels.isEmpty()) {
@@ -1598,7 +1596,7 @@ public class Challenges implements CommandExecutor, TabCompleter {
         for (String challengeName : challengeList.get(level)) {
             CPItem item = createItem(challengeName, player);
             if (item != null) {
-                cp.add(item);
+                challengeItems.add(item);
             }
         }
         // Add the missing levels so player can navigate to them
@@ -1608,29 +1606,38 @@ public class Challenges implements CommandExecutor, TabCompleter {
                 break;
             }
         }
-        //plugin.getLogger().info("DEBUG: level done = " + levelDone);
+        
+        List<CPItem> levelItems = new ArrayList<CPItem>();
         for (int i = 0; i < Settings.challengeLevels.size(); i++) {
-            if (!level.equalsIgnoreCase(Settings.challengeLevels.get(i))) {
-                // Add a navigation book
-                List<String> lore = new ArrayList<String>();
-                if (i <= levelDone) {
-                    CPItem item = new CPItem(Material.BOOK_AND_QUILL, ChatColor.GOLD + Settings.challengeLevels.get(i), null, null);
-                    lore = Util.chop(ChatColor.WHITE, plugin.myLocale(player.getUniqueId()).challengesNavigation.replace("[level]", Settings.challengeLevels.get(i)), 25);
-                    item.setNextSection(Settings.challengeLevels.get(i));
-                    item.setLore(lore);
-                    cp.add(item);
-                } else {
-                    // Hint at what is to come
-                    CPItem item = new CPItem(Material.BOOK, ChatColor.GOLD + Settings.challengeLevels.get(i), null, null);
-                    // Add the level
-                    int toDo = checkLevelCompletion(player, Settings.challengeLevels.get(i - 1));
-                    lore = Util.chop(
-                            ChatColor.WHITE,
-                            plugin.myLocale(player.getUniqueId()).challengestoComplete.replace("[challengesToDo]", String.valueOf(toDo)).replace("[thisLevel]",
-                                    Settings.challengeLevels.get(i - 1)), 25);
-                    item.setLore(lore);
-                    cp.add(item);
+            // Add a navigation book
+            List<String> lore = new ArrayList<String>();
+            String challengeLevel = Settings.challengeLevels.get(i);
+            plugin.getLogger().info(i + " " + challengeLevel);
+            if (i <= levelDone) {
+                ItemStack stack = new ItemStack(Material.BOOK_AND_QUILL);
+                if (level.equals(challengeLevel)) {
+                    // Highlight the fact that this is the current level
+                    ItemMeta im = stack.getItemMeta();
+                    im.addEnchant(Enchantment.ARROW_DAMAGE, 0, true);
+                    stack.setItemMeta(im);
+                    stack.removeEnchantment(Enchantment.ARROW_DAMAGE);
                 }
+                CPItem item = new CPItem(stack, ChatColor.GOLD + challengeLevel, null, null);
+                lore = Util.chop(ChatColor.WHITE, plugin.myLocale(player.getUniqueId()).challengesNavigation.replace("[level]", challengeLevel), 25);
+                item.setNextSection(Settings.challengeLevels.get(i));
+                item.setLore(lore);
+                levelItems.add(item);
+            } else {
+                // Hint at what is to come
+                CPItem item = new CPItem(Material.BOOK, ChatColor.GOLD + challengeLevel, null, null);
+                // Add the level
+                int toDo = checkLevelCompletion(player, Settings.challengeLevels.get(i - 1));
+                lore = Util.chop(
+                        ChatColor.WHITE,
+                        plugin.myLocale(player.getUniqueId()).challengestoComplete.replace("[challengesToDo]", String.valueOf(toDo)).replace("[thisLevel]",
+                                Settings.challengeLevels.get(i - 1)), 25);
+                item.setLore(lore);
+                levelItems.add(item);
             }
         }
         // Add the free challenges if not already shown (which can happen if all of the challenges are done!)
@@ -1638,25 +1645,113 @@ public class Challenges implements CommandExecutor, TabCompleter {
             for (String freeChallenges: challengeList.get("")) {
                 CPItem item = createItem(freeChallenges, player);
                 if (item != null) {
-                    cp.add(item);
+                    challengeItems.add(item);
                 } 
             }
         }
-        // Create the panel
-        if (cp.size() > 0) {
-            // Make sure size is a multiple of 9
-            int size = cp.size() + 8;
-            size -= (size % 9);
-            Inventory newPanel = Bukkit.createInventory(null, size, plugin.myLocale(player.getUniqueId()).challengesguiTitle);
-            // Store the panel details for retrieval later
-            playerChallengeGUI.put(player.getUniqueId(), cp);
-            // Fill the inventory and return
-            for (CPItem i : cp) {
-                newPanel.addItem(i.getItem());
-            }
-            return newPanel;
+        if (challengeItems.size() == 0 && levelItems.size() == 0) {
+            // No content to display; would be an empty UI
+            return null;
         }
-        return null;
+        // Create the items for the panel
+        List<CPItem> cp = new ArrayList<CPItem>();
+        int challengeRows = (int) Math.ceil(challengeItems.size() / 9.0);
+        int levelRows = (int) Math.ceil(levelItems.size() / 9.0);
+        // Add the challenge items
+        for (int i = 0; i < challengeRows * 9; i++) {
+            CPItem item = (i < challengeItems.size() ? challengeItems.get(i) : null);
+            cp.add(item);
+        }
+        // Add an empty row
+        for (int i = 0; i < 9; i++) {
+            cp.add(null);
+        }
+        // Add the level items
+        int lastLevelRowSize = levelItems.size() % 9;
+        for (int row = 0; row < levelRows; row++) {
+            if (row == levelRows - 1 && lastLevelRowSize != 0) {
+                // Last row gets special padding
+                switch (lastLevelRowSize) {
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5: {
+                    int offset = 5 - lastLevelRowSize;
+                    for (int i = 0; i < offset; i++) {
+                        cp.add(null);
+                    }
+                    for (int i = 0; i < lastLevelRowSize; i++) {
+                        int index = (row * 9) + i;
+                        cp.add(levelItems.get(index));
+                        if (i != lastLevelRowSize - 1) {
+                            cp.add(null);  // Spacing between items
+                        }
+                    }
+                    break;
+                }
+                // Ugly, but the easiest way of handling these cases
+                case 6: {
+                    // __[][][]__[][][]__
+                    cp.add(null);
+                    cp.add(levelItems.get((row * 9) + 0));
+                    cp.add(levelItems.get((row * 9) + 1));
+                    cp.add(levelItems.get((row * 9) + 2));
+                    cp.add(null);
+                    cp.add(levelItems.get((row * 9) + 3));
+                    cp.add(levelItems.get((row * 9) + 4));
+                    cp.add(levelItems.get((row * 9) + 5));
+                    break;
+                }
+                case 7: {
+                    // __[][][][][][][]__
+                    cp.add(null);
+                    cp.add(levelItems.get((row * 9) + 0));
+                    cp.add(levelItems.get((row * 9) + 1));
+                    cp.add(levelItems.get((row * 9) + 2));
+                    cp.add(levelItems.get((row * 9) + 3));
+                    cp.add(levelItems.get((row * 9) + 4));
+                    cp.add(levelItems.get((row * 9) + 5));
+                    cp.add(levelItems.get((row * 9) + 6));
+                    break;
+                }
+                case 8: {
+                    // [][][][]__[][][][]
+                    cp.add(levelItems.get((row * 9) + 0));
+                    cp.add(levelItems.get((row * 9) + 1));
+                    cp.add(levelItems.get((row * 9) + 2));
+                    cp.add(levelItems.get((row * 9) + 3));
+                    cp.add(null);
+                    cp.add(levelItems.get((row * 9) + 4));
+                    cp.add(levelItems.get((row * 9) + 5));
+                    cp.add(levelItems.get((row * 9) + 6));
+                    cp.add(levelItems.get((row * 9) + 7));
+                    break;
+                }
+                }
+            } else {
+                for (int i = 0; i < 9; i++) {
+                    int index = (row * 9) + i;
+                    cp.add(levelItems.get(index));
+                }
+            }
+        }
+        
+        // Create the panel itself
+        // Make sure size is a multiple of 9
+        int size = cp.size() + 8;
+        size -= (size % 9);
+        Inventory newPanel = Bukkit.createInventory(null, size, plugin.myLocale(player.getUniqueId()).challengesguiTitle);
+        // Store the panel details for retrieval later
+        playerChallengeGUI.put(player.getUniqueId(), cp);
+        // Fill the inventory and return
+        for (int index = 0; index < cp.size(); index++) {
+            CPItem item = cp.get(index);
+            if (item != null) {
+                newPanel.setItem(index, item.getItem());
+            }
+        }
+        return newPanel;
     }
 
     /**
